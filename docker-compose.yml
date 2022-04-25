@@ -1,0 +1,44 @@
+version: "3"
+services:
+  nextjs-app:
+    image: node:14.17.0
+    working_dir: /usr/src/app/front-root
+    volumes:
+      - ./front-root/:/usr/src/app/front-root
+    command: sh -c "npm run dev"
+    ports:
+      - "3000:3000"
+  firebase-backend:
+    build:
+      context: ./docker
+      dockerfile: firebase.dockerfile
+    volumes:
+      - ./firebase/emulators/:/opt/workspace:cached
+      - ./firebase/bin/:/root/.cache:cached
+      - ./firebase/config/:/root/.config:cached
+    ports:
+      - 4000:4000 # Emulator Suite UI
+      # - 5000:5000 # Firebase Hosting
+      - 5001:5001 # Clound Functions
+      - 9099:9099 # Clound Functions
+      # - 9000:9000 # Realtime Database
+      # - 8080:8080 # Cloud Firestore
+      # - 8085:8085 # Cloud Pub/Sub
+    working_dir: /opt/workspace
+    command: sh -c "cd functions/ && npm run serve:watch"
+    tty: true
+  pw:
+    # image: mcr.microsoft.com/playwright:focal
+    build:
+      context: ./docker
+      dockerfile: playwright.dockerfile
+    volumes:
+      - ./front-root/e2e/:/home/pwuser/app/e2e/
+      - ./front-root/package.json:/home/pwuser/app/package.json
+    working_dir: /home/pwuser/app
+    depends_on:
+      - nextjs-app
+    profiles:
+      - extra
+    extra_hosts:
+      - "localhost:192.168.96.1"
